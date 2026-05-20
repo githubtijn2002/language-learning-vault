@@ -1,0 +1,1019 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Song lesson player</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0e0f12;
+    --panel: #16181d;
+    --muted: #6b7280;
+    --text: #e5e7eb;
+    --accent: #f59e0b;
+    --accent-soft: #f59e0b22;
+    --good: #22c55e;
+    --warn: #eab308;
+    --bad: #ef4444;
+    --border: #23262d;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+  header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    background: var(--panel);
+  }
+  header h1 {
+    font-size: 15px; font-weight: 600; margin: 0; color: var(--text);
+  }
+  header h1 small { color: var(--muted); font-weight: 400; margin-left: 8px; }
+  .controls { display: flex; gap: 6px; margin-left: auto; align-items: center; flex-wrap: wrap; }
+  .controls button {
+    background: #1f2228;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font: inherit; font-size: 13px;
+    cursor: pointer;
+  }
+  .controls button:hover { background: #262a31; }
+  .controls button.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .controls .sep { width: 1px; background: var(--border); align-self: stretch; margin: 2px 4px; }
+  main {
+    display: grid;
+    grid-template-columns: minmax(420px, 1fr) minmax(360px, 1fr);
+    overflow: hidden;
+  }
+  #player-wrap {
+    display: flex; align-items: center; justify-content: center;
+    background: #000; overflow: hidden; position: relative;
+  }
+  #yt-player, #audio-player { width: 100%; height: 100%; }
+  #audio-player {
+    display: none;
+    background: #050505;
+    color: var(--text);
+  }
+  #audio-player.show { display: block; }
+  #yt-player.hide { display: none; }
+  #status-overlay {
+    position: absolute;
+    top: 12px; left: 12px;
+    background: #000a;
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 150ms;
+  }
+  #status-overlay.show { opacity: 1; }
+  .right-pane {
+    overflow-y: auto;
+    padding: 24px 28px 60vh 28px;
+    scroll-behavior: smooth;
+  }
+  .line {
+    padding: 6px 10px;
+    margin: 2px -10px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #8b8f97;
+    transition: color 120ms, background 120ms;
+    border-left: 2px solid transparent;
+  }
+  .line:hover { background: #1a1d23; color: var(--text); }
+  .line.past { color: #5b6068; }
+  .line.active {
+    color: #fff;
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    font-weight: 500;
+  }
+  .line.unsynced { cursor: default; }
+  .line.unsynced:hover { background: transparent; color: #8b8f97; }
+  .line.is-a { box-shadow: inset 2px 0 0 var(--good); }
+  .line.is-b { box-shadow: inset -2px 0 0 var(--bad); }
+  .line.is-a.is-b { box-shadow: inset 2px 0 0 var(--good), inset -2px 0 0 var(--bad); }
+  .empty { color: var(--muted); padding: 20px; }
+  .right-pane.lyrics-hidden {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .right-pane.lyrics-hidden .line { display: none; }
+  .right-pane.lyrics-hidden::before {
+    content: "Lyrics hidden\A Eyes off, ears on.";
+    white-space: pre;
+    text-align: center;
+    color: var(--muted);
+    font-style: italic;
+    font-size: 16px;
+    line-height: 2;
+    letter-spacing: 0.02em;
+  }
+
+  /* Practice */
+  .practice-card {
+    padding: 20px 24px;
+    background: #14161b;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+  .practice-card h2 {
+    margin: 0 0 8px 0; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .practice-target {
+    font-size: 20px;
+    line-height: 1.4;
+    color: var(--text);
+    padding: 12px 0;
+  }
+  .practice-transcript {
+    margin-top: 10px;
+    min-height: 24px;
+    color: #cbd5e1;
+    background: #0b0c10;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .practice-transcript.empty { color: var(--muted); font-style: italic; }
+  .practice-score {
+    margin-top: 12px;
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .score-perfect { background: #22c55e22; color: var(--good); border: 1px solid var(--good); }
+  .score-close   { background: #eab30822; color: var(--warn); border: 1px solid var(--warn); }
+  .score-ok      { background: #f59e0b22; color: var(--accent); border: 1px solid var(--accent); }
+  .score-bad     { background: #ef444422; color: var(--bad); border: 1px solid var(--bad); }
+  .practice-actions { margin-top: 16px; display: flex; gap: 8px; }
+  .practice-actions button {
+    background: #1f2228; color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .practice-actions button:hover { background: #262a31; }
+  .practice-actions button.primary {
+    background: var(--accent-soft); border-color: var(--accent); color: var(--accent);
+  }
+  .practice-progress {
+    margin-top: 8px;
+    height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+  }
+  .practice-progress > div { height: 100%; background: var(--accent); transition: width 200ms; }
+  .word.match { color: var(--good); }
+  .word.miss  { color: var(--bad); text-decoration: line-through; }
+  #sh-attempts { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .sh-attempt {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .sh-attempt .n { color: #5b6068; min-width: 48px; }
+  .sh-attempt .pct { font-weight: 600; }
+  .sh-attempt.best .pct { color: var(--good); }
+
+  .dialogue-msg {
+    padding: 10px 12px; margin: 6px 0; border-radius: 8px; max-width: 85%;
+    line-height: 1.45;
+  }
+  .dialogue-msg.bot {
+    background: #1a2330; border: 1px solid #2a3a4e; margin-right: auto;
+  }
+  .dialogue-msg.user {
+    background: #2a1f10; border: 1px solid #4a3a1a; margin-left: auto; text-align: right;
+  }
+  .dialogue-meta { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="hdr-title">…</h1>
+  <div class="controls">
+    <button id="btn-play">Play / Pause</button>
+    <span class="sep"></span>
+    <button class="speed" data-rate="1">1.0x</button>
+    <button class="speed" data-rate="0.75">0.75x</button>
+    <button class="speed" data-rate="0.5">0.5x</button>
+    <span class="sep"></span>
+    <button id="btn-set-a">Set A</button>
+    <button id="btn-set-b">Set B</button>
+    <button id="btn-loop">Loop A↔B</button>
+    <button id="btn-clear">Clear</button>
+    <span class="sep"></span>
+    <button id="btn-mode-listen" class="active">Listen</button>
+    <button id="btn-mode-practice">Shadow</button>
+    <button id="btn-mode-talk">Talk</button>
+  </div>
+</header>
+<main>
+  <div id="player-wrap">
+    <div id="yt-player"></div>
+    <audio id="audio-player" controls></audio>
+    <div id="status-overlay"></div>
+  </div>
+  <div id="right" class="right-pane"></div>
+</main>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+(function () {
+  // ----- State ------------------------------------------------------------
+  let SONG = null;
+  let lines = [];
+  let mode = "listen"; // listen | shadow | dialogue
+  let backend = null;  // { getTime, seekTo, play, pause, setRate, kind }
+  let ytPlayer = null;
+  let audioEl = document.getElementById("audio-player");
+  let ytEl = document.getElementById("yt-player");
+  let promoted = false;
+  let aTime = null, bTime = null, aIdx = -1, bIdx = -1;
+  let looping = false, armed = null, loopTimes = null, loopCount = 0;
+  let activeIdx = -1;
+  const right = document.getElementById("right");
+
+  // ----- Helpers ----------------------------------------------------------
+  function statusOverlay(text, ms = 1500) {
+    const el = document.getElementById("status-overlay");
+    el.textContent = text;
+    el.classList.add("show");
+    clearTimeout(statusOverlay._t);
+    if (ms > 0) statusOverlay._t = setTimeout(() => el.classList.remove("show"), ms);
+  }
+
+  function normalize(s) {
+    return (s || "")
+      .toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[¿?¡!.,;:"()\[\]]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    let prev = new Array(b.length + 1);
+    let curr = new Array(b.length + 1);
+    for (let j = 0; j <= b.length; j++) prev[j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      curr[0] = i;
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+      }
+      [prev, curr] = [curr, prev];
+    }
+    return prev[b.length];
+  }
+  function similarity(a, b) {
+    const an = normalize(a), bn = normalize(b);
+    if (!an && !bn) return 1;
+    if (!an || !bn) return 0;
+    const d = levenshtein(an, bn);
+    return 1 - d / Math.max(an.length, bn.length);
+  }
+  function scoreLabel(r) {
+    if (r >= 0.85) return { label: "perfect", cls: "score-perfect" };
+    if (r >= 0.65) return { label: "close", cls: "score-close" };
+    if (r >= 0.40) return { label: "understandable", cls: "score-ok" };
+    return { label: "try again", cls: "score-bad" };
+  }
+  function wordDiffHtml(target, heard) {
+    const tWords = normalize(target).split(" ").filter(Boolean);
+    const hSet = new Set(normalize(heard).split(" ").filter(Boolean));
+    return tWords.map((w) => {
+      const cls = hSet.has(w) ? "match" : "miss";
+      return `<span class="word ${cls}">${w}</span>`;
+    }).join(" ");
+  }
+
+  // ----- Backend abstraction ----------------------------------------------
+  function ytBackend() {
+    return {
+      kind: "yt",
+      getTime: () => ytPlayer && ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0,
+      seekTo: (t) => ytPlayer && ytPlayer.seekTo && ytPlayer.seekTo(t, true),
+      play:   () => ytPlayer && ytPlayer.playVideo && ytPlayer.playVideo(),
+      pause:  () => ytPlayer && ytPlayer.pauseVideo && ytPlayer.pauseVideo(),
+      setRate:(r) => ytPlayer && ytPlayer.setPlaybackRate && ytPlayer.setPlaybackRate(r),
+    };
+  }
+  function audioBackend() {
+    return {
+      kind: "audio",
+      getTime: () => audioEl.currentTime || 0,
+      seekTo: (t) => { audioEl.currentTime = t; },
+      play:   () => audioEl.play().catch(() => {}),
+      pause:  () => audioEl.pause(),
+      setRate:(r) => { audioEl.playbackRate = r; },
+    };
+  }
+
+  async function promoteToLocalAudio() {
+    if (promoted) return;
+    promoted = true;
+    statusOverlay("Embed blocked — downloading audio...", 0);
+    try {
+      const res = await fetch("/audio/promote", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "promote failed");
+      // YT.Player swaps our #yt-player div for an iframe with the same id —
+      // ytEl is now detached. Re-query and hide the current node.
+      const ytNow = document.getElementById("yt-player");
+      if (ytNow) ytNow.style.display = "none";
+      try { if (ytPlayer && ytPlayer.destroy) ytPlayer.destroy(); } catch {}
+      ytPlayer = null;
+      audioEl.src = data.url;
+      audioEl.classList.add("show");
+      backend = audioBackend();
+      audioEl.addEventListener("loadedmetadata", () => {
+        statusOverlay("Local audio ready", 1200);
+        backend.play();
+      }, { once: true });
+    } catch (e) {
+      statusOverlay("Audio download failed: " + e.message, 0);
+    }
+  }
+
+  // ----- Render lines -----------------------------------------------------
+  function renderListen() {
+    right.innerHTML = "";
+    if (!lines.length) {
+      right.innerHTML = '<div class="empty">No lyrics available.</div>';
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    lines.forEach((ln, i) => {
+      const div = document.createElement("div");
+      div.className = "line" + (SONG.synced ? "" : " unsynced");
+      div.dataset.idx = i;
+      if (ln.time !== null) div.dataset.time = ln.time;
+      div.textContent = ln.text || " ";
+      div.addEventListener("click", () => onLineClick(i, ln));
+      frag.appendChild(div);
+    });
+    right.appendChild(frag);
+    activeIdx = -1;
+    markAB();
+  }
+
+  function onLineClick(i, ln) {
+    if (mode !== "listen") return;
+    if (ln.time === null) return;
+    if (armed === "A") { aTime = ln.time; aIdx = i; markAB(); armed = null; setArmedButtons(); return; }
+    if (armed === "B") { bTime = lineEndTime(i); bIdx = i; markAB(); armed = null; setArmedButtons(); return; }
+    backend.seekTo(ln.time); backend.play();
+  }
+
+  function lineEndTime(i) {
+    if (i + 1 < lines.length && lines[i + 1].time != null) return lines[i + 1].time;
+    return (lines[i].time || 0) + 6; // fallback window
+  }
+
+  function markAB() {
+    if (mode !== "listen") return;
+    const els = document.querySelectorAll(".line");
+    els.forEach((el) => el.classList.remove("is-a", "is-b"));
+    if (aIdx >= 0 && els[aIdx]) els[aIdx].classList.add("is-a");
+    if (bIdx >= 0 && els[bIdx]) els[bIdx].classList.add("is-b");
+  }
+  function setArmedButtons() {
+    document.getElementById("btn-set-a").classList.toggle("active", armed === "A");
+    document.getElementById("btn-set-b").classList.toggle("active", armed === "B");
+  }
+
+  // ----- Listen-mode sync loop --------------------------------------------
+  function tick() {
+    if (!backend) return;
+    const t = backend.getTime();
+    if (looping && aTime !== null && bTime !== null && t > bTime) {
+      if (loopTimes !== null) {
+        loopCount++;
+        if (loopCount >= loopTimes) {
+          looping = false; loopCount = 0;
+          document.getElementById("btn-loop").classList.remove("active");
+          backend.pause();
+          backend.seekTo(aTime);
+        } else {
+          backend.seekTo(aTime);
+        }
+      } else {
+        backend.seekTo(aTime);
+      }
+      return;
+    }
+    if (mode !== "listen") return;
+    let idx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].time !== null && lines[i].time <= t + 0.05) idx = i;
+      else if (lines[i].time !== null) break;
+    }
+    if (idx === activeIdx) return;
+    activeIdx = idx;
+    const els = right.querySelectorAll(".line");
+    els.forEach((el, i) => {
+      el.classList.toggle("active", i === idx);
+      el.classList.toggle("past", i < idx);
+    });
+    if (idx >= 0) {
+      const el = els[idx];
+      const top = el.offsetTop - right.clientHeight / 2 + el.clientHeight / 2;
+      right.scrollTo({ top, behavior: "smooth" });
+    }
+  }
+
+  // ----- Listen-mode controls ---------------------------------------------
+  document.getElementById("btn-set-a").addEventListener("click", () => { armed = armed === "A" ? null : "A"; setArmedButtons(); });
+  document.getElementById("btn-set-b").addEventListener("click", () => { armed = armed === "B" ? null : "B"; setArmedButtons(); });
+  document.getElementById("btn-loop").addEventListener("click", (e) => {
+    looping = !looping; loopCount = 0; loopTimes = null;
+    e.currentTarget.classList.toggle("active", looping);
+  });
+  document.getElementById("btn-clear").addEventListener("click", () => {
+    aTime = bTime = null; aIdx = bIdx = -1;
+    looping = false; armed = null; loopTimes = null; loopCount = 0;
+    document.getElementById("btn-loop").classList.remove("active");
+    setArmedButtons(); markAB();
+  });
+  document.getElementById("btn-play").addEventListener("click", () => {
+    if (!backend) return;
+    if (backend.kind === "yt") {
+      const s = ytPlayer.getPlayerState();
+      if (s === 1) backend.pause(); else backend.play();
+    } else {
+      if (audioEl.paused) backend.play(); else backend.pause();
+    }
+  });
+  document.querySelectorAll(".speed").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!backend) return;
+      const r = parseFloat(btn.dataset.rate);
+      backend.setRate(r);
+      document.querySelectorAll(".speed").forEach((b) => b.classList.toggle("active", b === btn));
+    });
+  });
+  document.getElementById("btn-mode-listen").addEventListener("click", () => switchMode("listen"));
+  document.getElementById("btn-mode-practice").addEventListener("click", () => {
+    const idxs = lines.map((_, i) => i).filter((i) => lines[i].time !== null);
+    startShadow(idxs.slice(0, 5));
+  });
+  document.getElementById("btn-mode-talk").addEventListener("click", () => {
+    // Enter dialogue mode with no opener — user speaks first.
+    startDialogueMode("");
+    // Signal the agent so it knows the user wants to chat.
+    fetch("/practice/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "talk", initiator: "ui" }),
+    }).catch(() => {});
+  });
+
+  function switchMode(m) {
+    mode = m;
+    document.getElementById("btn-mode-listen").classList.toggle("active", m === "listen");
+    document.getElementById("btn-mode-practice").classList.toggle("active", m !== "listen");
+    if (m === "listen") renderListen();
+  }
+
+  // ----- Practice: Shadow -------------------------------------------------
+  let shadowQueue = [];
+  let shadowResults = [];
+  let shadowIdx = 0;
+  let shadowAttempts = []; // attempts for the CURRENT line, in order
+  let recognizer = null;
+
+  function buildRecognizer() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return null;
+    const r = new SR();
+    // Locale for speech recognition. Change to match your target variant
+    // (e.g. "es-MX", "ja-JP", "fr-FR", "zh-CN"). See SETUP.md §6.4.
+    r.lang = "es-MX";
+    r.continuous = false;
+    r.interimResults = true;
+    return r;
+  }
+
+  function startShadow(idxList) {
+    if (!idxList.length) { statusOverlay("No practice lines selected", 2000); return; }
+    mode = "shadow";
+    document.getElementById("btn-mode-listen").classList.remove("active");
+    document.getElementById("btn-mode-practice").classList.add("active");
+    shadowQueue = idxList.slice();
+    shadowResults = [];
+    shadowIdx = 0;
+    renderShadowCard();
+  }
+
+  function renderShadowCard() {
+    if (shadowIdx >= shadowQueue.length) return finishShadow();
+    const lineIdx = shadowQueue[shadowIdx];
+    const line = lines[lineIdx];
+    const progressPct = Math.round((shadowIdx / shadowQueue.length) * 100);
+    shadowAttempts = [];
+    right.innerHTML = `
+      <div class="practice-card">
+        <h2>Shadow · ${shadowIdx + 1} / ${shadowQueue.length}</h2>
+        <div class="practice-target">${escapeHtml(line.text)}</div>
+        <div class="practice-transcript empty" id="sh-transcript">Press “Speak” after listening.</div>
+        <div id="sh-score"></div>
+        <div id="sh-attempts"></div>
+        <div class="practice-actions">
+          <button id="sh-play" class="primary">▶ Play line</button>
+          <button id="sh-speak">🎙 Speak</button>
+          <button id="sh-skip">Skip</button>
+          <button id="sh-next" style="display:none">Next →</button>
+        </div>
+        <div class="practice-progress"><div style="width:${progressPct}%"></div></div>
+      </div>
+    `;
+    document.getElementById("sh-play").addEventListener("click", () => {
+      const start = line.time;
+      const end = lineEndTime(lineIdx);
+      backend.seekTo(start); backend.play();
+      // Pause at end
+      const stopAt = setInterval(() => {
+        if (backend.getTime() >= end - 0.1) {
+          backend.pause();
+          clearInterval(stopAt);
+        }
+      }, 100);
+    });
+    document.getElementById("sh-skip").addEventListener("click", () => {
+      shadowIdx++; renderShadowCard();
+    });
+    document.getElementById("sh-speak").addEventListener("click", startShadowListen);
+  }
+
+  function startShadowListen() {
+    const transcriptEl = document.getElementById("sh-transcript");
+    const scoreEl = document.getElementById("sh-score");
+    const nextBtn = document.getElementById("sh-next");
+    const lineIdx = shadowQueue[shadowIdx];
+    const target = lines[lineIdx].text;
+    if (!recognizer) recognizer = buildRecognizer();
+    if (!recognizer) {
+      transcriptEl.textContent = "Speech recognition not available in this browser. Use Chrome or Edge.";
+      transcriptEl.classList.remove("empty");
+      return;
+    }
+    // Hide Next during the retry so old stacked listeners can't fire.
+    nextBtn.style.display = "none";
+    nextBtn.onclick = null;
+    transcriptEl.textContent = "Listening...";
+    transcriptEl.classList.remove("empty");
+    let finalText = "";
+    recognizer.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += t;
+        else interim += t;
+      }
+      transcriptEl.textContent = (finalText + interim).trim() || "Listening...";
+    };
+    recognizer.onerror = (e) => {
+      transcriptEl.textContent = "Mic error: " + e.error;
+    };
+    recognizer.onend = () => {
+      const heard = finalText.trim();
+      const ratio = similarity(target, heard);
+      const { label, cls } = scoreLabel(ratio);
+      transcriptEl.innerHTML = wordDiffHtml(target, heard) +
+        `<div style="margin-top:8px;color:#94a3b8;font-size:13px">Heard: <em>${escapeHtml(heard || "(nothing)")}</em></div>`;
+      scoreEl.innerHTML = `<div class="practice-score ${cls}">${label} · ${(ratio*100).toFixed(0)}%</div>`;
+      shadowAttempts.push({ heard, score: ratio, label });
+      renderShadowAttempts();
+      // Result for this line = the BEST attempt; record how many tries it took.
+      let best = shadowAttempts[0];
+      for (const a of shadowAttempts) if (a.score > best.score) best = a;
+      const row = {
+        idx: lineIdx, label: best.label, target,
+        heard: best.heard, score: best.score, attempts: shadowAttempts.length,
+      };
+      const existing = shadowResults.findIndex((r) => r.idx === lineIdx);
+      if (existing >= 0) shadowResults[existing] = row;
+      else shadowResults.push(row);
+      // Relabel Speak → Retry after the first attempt.
+      const speakBtn = document.getElementById("sh-speak");
+      if (speakBtn) speakBtn.textContent = "🎙 Retry";
+      nextBtn.style.display = "";
+      nextBtn.onclick = () => { shadowIdx++; renderShadowCard(); };
+    };
+    try { recognizer.start(); } catch (e) { transcriptEl.textContent = "Mic start failed: " + e.message; }
+  }
+
+  function renderShadowAttempts() {
+    const el = document.getElementById("sh-attempts");
+    if (!el) return;
+    let bestScore = -1;
+    for (const a of shadowAttempts) if (a.score > bestScore) bestScore = a.score;
+    el.innerHTML = shadowAttempts.map((a, i) => {
+      const isBest = a.score === bestScore;
+      return `<div class="sh-attempt${isBest ? " best" : ""}">` +
+        `<span class="n">try ${i + 1}</span>` +
+        `<span class="pct">${(a.score * 100).toFixed(0)}%</span>` +
+        `<span>${escapeHtml(a.label)}${isBest && shadowAttempts.length > 1 ? " — best" : ""}</span>` +
+        `</div>`;
+    }).join("");
+  }
+
+  async function finishShadow() {
+    const summary = shadowResults.map((r, i) => `<tr><td>${i+1}</td><td>${escapeHtml(r.label)}</td><td>${(r.score*100).toFixed(0)}%</td><td>${r.attempts || 1}</td><td>${escapeHtml(r.target)}</td><td><em>${escapeHtml(r.heard || "—")}</em></td></tr>`).join("");
+    right.innerHTML = `
+      <div class="practice-card">
+        <h2>Shadow — summary</h2>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr style="text-align:left;color:#94a3b8"><th>#</th><th>Score</th><th>Best</th><th>Tries</th><th>Target</th><th>Heard</th></tr></thead>
+          <tbody>${summary}</tbody>
+        </table>
+        <div class="practice-actions">
+          <button id="sh-done" class="primary">Back to lyrics</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("sh-done").addEventListener("click", () => switchMode("listen"));
+    try {
+      await fetch("/practice/result", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: shadowResults }),
+      });
+    } catch (e) { console.error("result POST failed", e); }
+  }
+
+  // ----- Practice: Dialogue -----------------------------------------------
+  let dialogueRecognizer = null;
+  let selectedVoiceURI = localStorage.getItem("ttsVoiceURI") || null;
+  let serverVoices = []; // Azure voices, if the server has TTS configured
+
+  fetch("/tts/voices")
+    .then((r) => r.json())
+    .then((d) => {
+      serverVoices = (d && d.voices) || [];
+      renderVoicePicker();
+    })
+    .catch(() => {});
+
+  // Voice picker for the target language.
+  // To retarget, change the language prefix in `targetVoices` and the tier
+  // priorities in `score`. The defaults below are tuned for Mexican Spanish.
+  // See SETUP.md §6.4 for guidance on other languages.
+  function targetVoices() {
+    const all = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    const es = all.filter((v) => /^es/i.test(v.lang));
+    // Tier: es-MX first, then other Latin American (not es-ES), then es-ES last.
+    const score = (v) => {
+      if (/es-?MX/i.test(v.lang)) return 0;
+      if (/es-?(CO|AR|CL|PE|VE|UY|EC|BO|PY|US|419|LA)/i.test(v.lang)) return 1;
+      if (/es-?ES/i.test(v.lang)) return 3;
+      return 2;
+    };
+    return es.sort((a, b) => score(a) - score(b) || a.name.localeCompare(b.name));
+  }
+
+  function pickLocalVoice() {
+    const voices = targetVoices();
+    if (!voices.length) return null;
+    if (selectedVoiceURI && selectedVoiceURI.startsWith("local:")) {
+      const uri = selectedVoiceURI.slice(6);
+      const v = voices.find((x) => x.voiceURI === uri);
+      if (v) return v;
+    }
+    return voices[0];
+  }
+
+  function renderVoicePicker() {
+    const sel = document.getElementById("dlg-voice");
+    if (!sel) return;
+    const voices = targetVoices();
+    sel.innerHTML = "";
+    if (!voices.length && !serverVoices.length) {
+      const opt = document.createElement("option");
+      opt.textContent = "(no voices available for the target locale)";
+      sel.appendChild(opt);
+      sel.disabled = true;
+      return;
+    }
+    sel.disabled = false;
+    // Server-side (Azure) voices first — these are the true native-locale ones.
+    if (serverVoices.length) {
+      const grp = document.createElement("optgroup");
+      grp.label = "Server (Azure neural)";
+      serverVoices.forEach((v) => {
+        const opt = document.createElement("option");
+        opt.value = "server:" + v.id;
+        opt.textContent = `${v.name} ★`;
+        if (selectedVoiceURI === "server:" + v.id) opt.selected = true;
+        grp.appendChild(opt);
+      });
+      sel.appendChild(grp);
+    }
+    // Then local browser voices.
+    const grp2 = document.createElement("optgroup");
+    grp2.label = "Browser voices";
+    voices.forEach((v) => {
+      const opt = document.createElement("option");
+      opt.value = "local:" + v.voiceURI;
+      opt.textContent = `${v.name} (${v.lang})`;
+      if (selectedVoiceURI === "local:" + v.voiceURI || selectedVoiceURI === v.voiceURI) opt.selected = true;
+      grp2.appendChild(opt);
+    });
+    sel.appendChild(grp2);
+    // Default: first server voice if available, else first browser voice.
+    if (!selectedVoiceURI) {
+      selectedVoiceURI = serverVoices.length
+        ? "server:" + serverVoices[0].id
+        : "local:" + voices[0].voiceURI;
+      sel.value = selectedVoiceURI;
+    }
+  }
+
+  if (window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => renderVoicePicker();
+  }
+
+  function startDialogueMode(opener) {
+    mode = "dialogue";
+    document.getElementById("btn-mode-listen").classList.remove("active");
+    document.getElementById("btn-mode-practice").classList.add("active");
+    right.innerHTML = `
+      <div class="practice-card">
+        <h2>Conversation</h2>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;color:#94a3b8">
+          <label for="dlg-voice">Voice:</label>
+          <select id="dlg-voice" style="flex:1;background:#0b0c10;color:#e5e7eb;border:1px solid #23262d;border-radius:4px;padding:4px"></select>
+        </div>
+        <div id="dlg-log" style="display:flex;flex-direction:column;gap:4px"></div>
+        <div class="practice-transcript empty" id="dlg-interim">Waiting for next line...</div>
+        <div class="practice-actions">
+          <button id="dlg-listen">🎙 Speak now</button>
+          <button id="dlg-cancel" disabled>Cancel recording</button>
+          <button id="dlg-end">End dialogue</button>
+        </div>
+      </div>
+    `;
+    renderVoicePicker();
+    document.getElementById("dlg-voice").addEventListener("change", (e) => {
+      selectedVoiceURI = e.target.value;
+      localStorage.setItem("ttsVoiceURI", selectedVoiceURI);
+    });
+    document.getElementById("dlg-listen").addEventListener("click", () => armDialogueMic());
+    document.getElementById("dlg-cancel").addEventListener("click", () => cancelDialogueMic());
+    document.getElementById("dlg-end").addEventListener("click", () => switchMode("listen"));
+    if (opener) dialogueSay(opener);
+    else armDialogueMic();
+  }
+
+  function dialogueAppend(role, text) {
+    const log = document.getElementById("dlg-log");
+    if (!log) return;
+    const div = document.createElement("div");
+    div.className = "dialogue-msg " + (role === "bot" ? "bot" : "user");
+    div.innerHTML = `<div class="dialogue-meta">${role === "bot" ? "Claude" : "You"}</div>${escapeHtml(text)}`;
+    log.appendChild(div);
+    log.scrollIntoView({ block: "end", behavior: "smooth" });
+  }
+
+  function dialogueSay(text) {
+    if (mode !== "dialogue") return;
+    dialogueAppend("bot", text);
+    fetch("/practice/dialogue", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "bot", text }),
+    }).catch(() => {});
+    // TTS — server-side (Azure) if a server voice is selected, else Web Speech.
+    if (selectedVoiceURI && selectedVoiceURI.startsWith("server:")) {
+      const voiceId = selectedVoiceURI.slice(7);
+      const audio = new Audio(
+        `/tts?voice=${encodeURIComponent(voiceId)}&text=${encodeURIComponent(text)}`
+      );
+      audio.onended = () => armDialogueMic();
+      audio.onerror = () => {
+        statusOverlay("Server TTS failed — falling back to browser voice", 2500);
+        speakLocal(text);
+      };
+      audio.play().catch(() => speakLocal(text));
+    } else {
+      speakLocal(text);
+    }
+  }
+
+  function speakLocal(text) {
+    if (window.speechSynthesis && window.SpeechSynthesisUtterance) {
+      const u = new SpeechSynthesisUtterance(text);
+      const v = pickLocalVoice();
+      if (v) { u.voice = v; u.lang = v.lang; } else { u.lang = "es-MX"; }
+      u.onend = () => armDialogueMic();
+      window.speechSynthesis.speak(u);
+    } else {
+      armDialogueMic();
+    }
+  }
+
+  let dialogueCancelled = false;
+  let dialogueListening = false;
+
+  function setDialogueButtons(listening) {
+    dialogueListening = listening;
+    const speakBtn = document.getElementById("dlg-listen");
+    const cancelBtn = document.getElementById("dlg-cancel");
+    if (speakBtn) speakBtn.disabled = listening;
+    if (cancelBtn) cancelBtn.disabled = !listening;
+  }
+
+  function cancelDialogueMic() {
+    if (!dialogueListening || !dialogueRecognizer) return;
+    dialogueCancelled = true;
+    try { dialogueRecognizer.abort(); } catch {}
+  }
+
+  function armDialogueMic() {
+    const interim = document.getElementById("dlg-interim");
+    if (!interim) return;
+    if (!dialogueRecognizer) dialogueRecognizer = buildRecognizer();
+    if (!dialogueRecognizer) {
+      interim.textContent = "Speech recognition not available.";
+      interim.classList.remove("empty");
+      return;
+    }
+    interim.textContent = "Listening...";
+    interim.classList.remove("empty");
+    dialogueCancelled = false;
+    let finalText = "";
+    dialogueRecognizer.onresult = (e) => {
+      let inter = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+        else inter += e.results[i][0].transcript;
+      }
+      interim.textContent = (finalText + inter).trim() || "Listening...";
+    };
+    dialogueRecognizer.onerror = (e) => { interim.textContent = "Mic error: " + e.error; };
+    dialogueRecognizer.onend = () => {
+      setDialogueButtons(false);
+      if (dialogueCancelled) {
+        dialogueCancelled = false;
+        interim.textContent = "Cancelled. Press 'Speak now' to retry.";
+        interim.classList.add("empty");
+        return;
+      }
+      const heard = finalText.trim();
+      if (heard) {
+        dialogueAppend("user", heard);
+        fetch("/practice/dialogue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "user", text: heard }),
+        }).catch(() => {});
+      }
+      interim.textContent = "Press 'Speak now' for your next turn.";
+      interim.classList.add("empty");
+    };
+    try {
+      dialogueRecognizer.start();
+      setDialogueButtons(true);
+    } catch (e) {
+      interim.textContent = "Mic start failed: " + e.message;
+      setDialogueButtons(false);
+    }
+  }
+
+  function escapeHtml(s) {
+    return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // ----- Command dispatcher (from SSE) ------------------------------------
+  function handleCmd(action, args) {
+    args = args || {};
+    if (action === "play") {
+      if (args.start != null) backend.seekTo(args.start);
+      if (args.end != null) {
+        aTime = args.start; bTime = args.end;
+        looping = true; loopTimes = null;
+        document.getElementById("btn-loop").classList.add("active");
+        markAB();
+      }
+      backend.play();
+      return;
+    }
+    if (action === "pause") return backend.pause();
+    if (action === "seek") return backend.seekTo(args.t);
+    if (action === "rate") {
+      backend.setRate(args.rate);
+      document.querySelectorAll(".speed").forEach((b) => b.classList.toggle("active", parseFloat(b.dataset.rate) === args.rate));
+      return;
+    }
+    if (action === "loop") {
+      aTime = args.a; bTime = args.b;
+      // Try to find matching line indices so the markers paint; fall back to -1.
+      aIdx = lines.findIndex((ln) => ln.time !== null && Math.abs(ln.time - aTime) < 0.01);
+      bIdx = lines.findIndex((ln) => ln.time !== null && Math.abs(lineEndTime(lines.indexOf(ln)) - bTime) < 0.01);
+      looping = true; loopTimes = args.times || null; loopCount = 0;
+      backend.seekTo(args.a); backend.play();
+      document.getElementById("btn-loop").classList.add("active");
+      markAB();
+      return;
+    }
+    if (action === "hide-lyrics") {
+      right.classList.add("lyrics-hidden");
+      return;
+    }
+    if (action === "show-lyrics") {
+      right.classList.remove("lyrics-hidden");
+      return;
+    }
+    if (action === "clear-loop") {
+      aTime = bTime = null; aIdx = bIdx = -1;
+      looping = false; loopTimes = null; loopCount = 0;
+      document.getElementById("btn-loop").classList.remove("active");
+      markAB();
+      return;
+    }
+    if (action === "practice") {
+      if (args.mode === "shadow") return startShadow(args.lines || []);
+      if (args.mode === "dialogue" && args.action === "start") return startDialogueMode(args.opener || "");
+      if (args.mode === "dialogue" && args.action === "say") return dialogueSay(args.text || "");
+      if (args.mode === "end") return switchMode("listen");
+    }
+  }
+
+  // ----- Init -------------------------------------------------------------
+  async function init() {
+    const res = await fetch("/data");
+    SONG = await res.json();
+    lines = SONG.lines || [];
+    document.getElementById("hdr-title").innerHTML =
+      `${escapeHtml(SONG.artist)} <small>${escapeHtml(SONG.title)}</small>`;
+    document.title = `${SONG.artist} — ${SONG.title}`;
+    renderListen();
+    setInterval(tick, 200);
+
+    // Open SSE
+    const ev = new EventSource("/events");
+    ev.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "cmd") handleCmd(msg.payload.action, msg.payload.args);
+      } catch {}
+    };
+  }
+
+  let ytApiReady = false;
+  let songReady = false;
+
+  function createYtPlayer() {
+    if (!ytApiReady || !songReady || !SONG.videoId || ytPlayer) return;
+    ytPlayer = new YT.Player("yt-player", {
+      videoId: SONG.videoId,
+      playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+      events: {
+        onReady: () => { backend = ytBackend(); },
+        onError: (e) => {
+          if (e.data === 101 || e.data === 150 || e.data === 153) {
+            statusOverlay("YouTube embed blocked (error " + e.data + "). Promoting to local audio.", 0);
+            promoteToLocalAudio();
+          } else {
+            statusOverlay("YouTube error " + e.data, 0);
+          }
+        },
+      },
+    });
+  }
+
+  window.onYouTubeIframeAPIReady = function () { ytApiReady = true; createYtPlayer(); };
+
+  init().then(() => { songReady = true; createYtPlayer(); }).catch((e) => {
+    document.body.innerHTML = `<pre style="padding:20px;color:#ef4444">Init failed: ${escapeHtml(e.message)}</pre>`;
+  });
+})();
+</script>
+</body>
+</html>

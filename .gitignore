@@ -1,0 +1,30 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Player runtime state (per-machine; not portable)
+tools/.player/
+
+# Cached YouTube ID lookups (per-vault; rebuilds on demand)
+vault/_meta/youtube_ids.json
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Obsidian local state
+.obsidian/workspace*
+.obsidian/cache
+.obsidian/graph.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vscode/
+.idea/
+
+# Exportify CSV drops (manually deleted after refresh)
+*.csv
