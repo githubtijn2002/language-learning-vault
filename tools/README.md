@@ -32,8 +32,20 @@ node tools/play_song.mjs "<artist>" "<song title>" --no-open
 
 - Starts a local HTTP server on `127.0.0.1:<auto-port>`, opens the browser, stays in the foreground. Ctrl+C cleans up.
 - Resolves a YouTube video ID (cache: `vault/_meta/youtube_ids.json`, then search scrape). `--url` overrides and updates the cache.
-- Fetches synced lyrics from **lrclib.net**. Falls back to `get_lyrics.mjs` for plain (unsynced) lyrics if lrclib has nothing.
-- Audio plays via YouTube IFrame. On embed errors (101 / 150 / 153) the player auto-promotes: server shells `yt-dlp` to download the audio once to `tools/.player/audio/<videoId>.m4a` and the player swaps to a local `<audio>` element. **Requires `yt-dlp` on PATH** for that path (`winget install yt-dlp.yt-dlp` / `brew install yt-dlp`). Songs whose YouTube embed works don't need it.
+- Fetches synced lyrics from **lrclib.net**. lrclib often returns several versions of a song (studio, radio edit, and **live medleys** that stitch multiple tracks together — e.g. "Te Voy a Amar / Besos Usados"). The player reads the YouTube video's real length and picks the lrclib version whose duration is **closest to that length**, dropping medley-length outliers (> 1.4× the reference). If the video length can't be read, it falls back to the median candidate duration. Falls back to `get_lyrics.mjs` for plain (unsynced) lyrics if lrclib has nothing.
+- Audio plays via YouTube IFrame. On embed errors (101 / 150 / 153) the player auto-promotes: server shells `yt-dlp` to download the audio once to `tools/.player/audio/<videoId>.m4a` and the player swaps to a local `<audio>` element. **Requires `yt-dlp` on PATH** for that path (`winget install yt-dlp.yt-dlp` / `brew install yt-dlp`). Songs whose YouTube embed works don't need it. Download success/failure is logged to **stderr** (`yt-dlp: download ok/FAILED <id>`).
+
+#### YouTube "confirm you're not a bot"
+
+YouTube increasingly gates downloads behind a sign-in check (`Sign in to confirm you're not a bot`). When that happens, give `yt-dlp` your cookies via **one** of these env vars before starting the server (nothing is read from a browser unless one is set):
+
+```
+YTDLP_COOKIES_FILE=path/to/cookies.txt          # exported cookies (most robust)
+YTDLP_COOKIES_FROM_BROWSER=firefox|chrome|edge  # read a live browser profile
+```
+
+- **cookies.txt** (recommended): export with a "Get cookies.txt LOCALLY" browser extension while logged into YouTube. Survives browser updates; doesn't need the browser closed. Treat the file as a credential — it's git-ignored.
+- **from-browser**: convenient but fragile on Windows — Chromium browsers (Chrome 127+ / recent Edge) encrypt cookies with app-bound DPAPI that yt-dlp often can't decrypt even with the browser closed (yt-dlp issues #7271, #10927). Firefox profiles read reliably.
 - Server URL goes to **stdout**; progress + errors to **stderr**.
 - Writes runtime state to `tools/.player/.server.json` so `ctl` can find it.
 

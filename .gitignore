@@ -2,6 +2,8 @@
 .env
 .env.local
 .env.*.local
+cookies.txt
+tools/cookies.txt
 
 # Player runtime state (per-machine; not portable)
 tools/.player/

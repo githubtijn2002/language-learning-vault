@@ -161,16 +161,77 @@ async function resolveYouTubeId(artist, title, urlOverride) {
   return id;
 }
 
-async function fetchSyncedLyrics(artist, title) {
+// Pull the video's real length from the watch page so we can match lyrics to it.
+// Public HTML, no yt-dlp/cookies needed; returns null if YouTube walls the page.
+async function fetchVideoDurationSeconds(videoId) {
+  if (!videoId) return null;
+  try {
+    const html = await get(`https://www.youtube.com/watch?v=${videoId}`);
+    const m = html.match(/"lengthSeconds":"(\d+)"/);
+    return m ? parseInt(m[1], 10) : null;
+  } catch { return null; }
+}
+// Rough play-length of an LRC block: span between its first and last timestamp.
+function lrcSpanSeconds(lrc) {
+  const re = /\[(\d{1,3}):(\d{2})(?:[.:]\d{1,3})?\]/g;
+  const times = [];
+  let m;
+  while ((m = re.exec(lrc))) times.push(parseInt(m[1], 10) * 60 + parseInt(m[2], 10));
+  if (!times.length) return null;
+  return Math.max(...times) - Math.min(...times);
+}
+function median(nums) {
+  const s = [...nums].sort((a, b) => a - b);
+  if (!s.length) return null;
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+// lrclib often returns several versions of a song — studio, radio edit, and
+// LIVE MEDLEYS that stitch multiple tracks together (e.g. "Te Voy a Amar /
+// Besos Usados", ~9 min). The old logic picked the *longest* lyric block, which
+// systematically selected those medleys. Instead, match the version whose
+// duration is closest to the real track, and drop medley-length outliers.
+const MEDLEY_FACTOR = 1.4; // > 1.4x the reference length => treat as live/medley
+async function fetchSyncedLyrics(artist, title, targetDuration = null) {
   const url =
     `https://lrclib.net/api/search?artist_name=${encodeURIComponent(artist)}` +
     `&track_name=${encodeURIComponent(title)}`;
   const results = await get(url, { json: true });
   if (!Array.isArray(results) || !results.length) return null;
-  const synced = results
+  const cands = results
     .filter((r) => r && typeof r.syncedLyrics === "string" && r.syncedLyrics.trim().length > 0)
-    .sort((a, b) => b.syncedLyrics.length - a.syncedLyrics.length);
-  return synced.length ? synced[0].syncedLyrics : null;
+    .map((r) => ({
+      lyrics: r.syncedLyrics,
+      dur: (typeof r.duration === "number" && r.duration > 0)
+        ? r.duration
+        : lrcSpanSeconds(r.syncedLyrics),
+    }))
+    .filter((c) => c.dur != null);
+  if (!cands.length) return null;
+
+  // Reference length: the actual video if we know it, else the median of all
+  // candidates (robust to a single long medley outlier).
+  const ref = (targetDuration && targetDuration > 0)
+    ? targetDuration
+    : median(cands.map((c) => c.dur));
+
+  // Medley guard: discard versions running far longer than the reference.
+  const kept = cands.filter((c) => c.dur <= ref * MEDLEY_FACTOR);
+  const dropped = cands.length - kept.length;
+  if (dropped > 0) {
+    console.error(`lrclib: ignored ${dropped} likely live/medley version(s) (> ${Math.round(ref * MEDLEY_FACTOR)}s vs ref ~${Math.round(ref)}s)`);
+  }
+  const pool = kept.length ? kept : cands;
+
+  // Closest duration to the reference wins; tie-break toward more complete lyrics.
+  pool.sort((a, b) => {
+    const da = Math.abs(a.dur - ref), db = Math.abs(b.dur - ref);
+    if (da !== db) return da - db;
+    return b.lyrics.length - a.lyrics.length;
+  });
+  console.error(`lrclib: picked version ~${Math.round(pool[0].dur)}s (ref ~${Math.round(ref)}s) from ${cands.length} candidate(s)`);
+  return pool[0].lyrics;
 }
 function parseLrc(lrc) {
   const lines = [];
@@ -286,6 +347,15 @@ function downloadAudio(videoId) {
       "--no-part",
     ];
     if (FFMPEG_DIR) args.push("--ffmpeg-location", FFMPEG_DIR);
+    // Opt-in auth for YouTube's "confirm you're not a bot" gate. Nothing is
+    // read from a browser unless one of these env vars is explicitly set.
+    //   YTDLP_COOKIES_FILE=path\to\cookies.txt        (exported cookies)
+    //   YTDLP_COOKIES_FROM_BROWSER=firefox|chrome|edge (read live profile)
+    if (process.env.YTDLP_COOKIES_FILE) {
+      args.push("--cookies", process.env.YTDLP_COOKIES_FILE);
+    } else if (process.env.YTDLP_COOKIES_FROM_BROWSER) {
+      args.push("--cookies-from-browser", process.env.YTDLP_COOKIES_FROM_BROWSER);
+    }
     args.push(url);
     console.error(`yt-dlp: downloading ${videoId}...`);
     const proc = spawn(YT_DLP_PATH, args, { stdio: ["ignore", "pipe", "pipe"] });
@@ -450,8 +520,12 @@ async function startServer({ artist, title, videoId, lines, synced, autoOpen }) 
         }
         try {
           await downloadAudio(videoId);
+          console.error(`yt-dlp: download ok ${videoId}`);
           return jsonResponse(res, 200, { url: `/audio/${videoId}.m4a` });
         } catch (e) {
+          // Surface to the server's own stdout/log too, not just the browser,
+          // so the failure is visible without screen access.
+          console.error(`yt-dlp: download FAILED ${videoId}: ${e.message}`);
           return jsonResponse(res, 500, { error: e.message });
         }
       }
@@ -768,7 +842,9 @@ async function runServer(argv) {
   let synced = true;
   let lines = [];
   try {
-    const lrc = await fetchSyncedLyrics(artist, title);
+    const targetDuration = await fetchVideoDurationSeconds(videoId);
+    if (targetDuration) console.error(`youtube: track length ~${targetDuration}s (matching lyrics to it)`);
+    const lrc = await fetchSyncedLyrics(artist, title, targetDuration);
     if (lrc) {
       lines = parseLrc(lrc);
       console.error(`lrclib: synced lyrics found (${lines.length} lines)`);
