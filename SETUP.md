@@ -74,6 +74,18 @@ These are *community plugins*. The template assumes they're installed but doesn'
 
 4. For each plugin: click **Install** → **Enable**.
 
+**Flashcard tag convention.** The Spaced Repetition plugin only scans notes that carry a `#flashcards` tag, and it builds *decks* from the tag path. This vault's skills tag card files `#flashcards/<lang>/<type>` — e.g. `#flashcards/spanish/vocab`, `#flashcards/spanish/songs/<slug>` (swap `<lang>` for your target-language slug). Hand-written cards need that tag too, or the plugin won't see them.
+
+**Optional plugins** (nice-to-have, not required):
+
+| Plugin | What it adds |
+|---|---|
+| Advanced Tables | Auto-formats Markdown tables (struggle_log, correction tables); Tab between cells, sort by column. |
+| Tag Wrangler | Rename/merge tags safely (e.g. restructuring `#flashcards/...` decks). |
+| Commander | Surface "Review Flashcards" and other commands as one-click buttons. |
+| Homepage | Open a dashboard note automatically on launch. |
+| LanguageTool | Grammar/spell check on written target-language notes — see §3.6. |
+
 ### 3.4 Quick Obsidian sanity check
 
 Open `vault/_meta/context_map.md` in Obsidian. Confirm:
@@ -91,6 +103,19 @@ The template is just files. You can sync the vault any way you sync files:
 - **Git**: commit and push as you would any repo. Add `vault/sessions/` to `.gitignore` if you want sessions private.
 - **iCloud / OneDrive / Dropbox**: drop the folder in your sync directory; Obsidian works fine on synced folders.
 - **Obsidian Sync (paid)**: $4/mo, end-to-end encrypted. Optional; not required.
+
+### 3.6 (Optional) LanguageTool for writing feedback
+
+The **LanguageTool** community plugin checks grammar + spelling in your written target-language notes — useful for catching agreement/orthography slips in production exercises.
+
+- **Default (public API):** install + enable the plugin; it checks against LanguageTool's public server. Only the text you check (the current note, or your selection) is sent — not your whole vault — but it does leave your machine. Fine for low-sensitivity practice notes.
+- **Self-host (private):** if you have Docker —
+
+  ```bash
+  docker run -d --name languagetool --restart unless-stopped -p 8081:8081 erikvl87/languagetool
+  ```
+
+  Verify with `curl http://localhost:8081/v2/languages`, then set the plugin's server URL to `http://localhost:8081` and disable the public API. Now nothing leaves your machine. (No Docker? Download the LanguageTool server jar — needs Java 17+ — and run `java -jar languagetool-server.jar --port 8081`.)
 
 ---
 
@@ -115,6 +140,8 @@ If Claude responds with something specific (e.g. "Maya is targeting CEFR B1 by S
 ## 5. Make the vault yours
 
 The template ships with Maya's content (English speaker → Mexican Spanish, CEFR A2→B1, Mexico City relocation 2027). Replace it.
+
+**Easiest path:** open Claude Code and ask it to run the `setup` skill — it interviews you about your goals and fills `context_map.md` + your variant register file automatically. The manual steps below are the alternative (and a good way to review what `setup` wrote).
 
 ### 5.1 Edit `vault/_meta/context_map.md`
 
@@ -299,8 +326,8 @@ The skill runs phases (a)–(i): cold listen → walkthrough → deep dive → g
 
 ## 9. Day-to-day
 
-- **Long days (60+ min)**: song-lesson, or grammar-lesson when a concept needs sustained isolated focus.
-- **Mid days (30 min)**: ask Claude to run phases c/d/f/h1 only of song-lesson (deep dive + grammar + production + shadow), or run grammar-lesson trimmed to phases b/d/e. Drop everything else.
+- **Long days (60+ min)**: song-lesson, grammar-lesson when a concept needs sustained isolated focus, or vocab-lesson (25-word batch) to push high-frequency coverage.
+- **Mid days (30 min)**: song-lesson phases c/d/f/h1 only (deep dive + grammar + production + shadow), grammar-lesson trimmed to phases b/d/e, or a 15-word vocab-lesson. Drop everything else.
 - **Short days (15 min)**: review skill. No new material — just spaced reactivation of items in your struggle log.
 
 After every session, edit `vault/_meta/context_map.md` if anything *durable* changed (your level moved up a band, your target date shifted, you swapped a target song). Don't put session-specific state here.

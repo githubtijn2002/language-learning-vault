@@ -21,14 +21,18 @@ SETUP.md                   ← step-by-step: install, configure, customize
 LICENSE                    ← MIT
 CLAUDE.md                  ← agent instructions (auto-loaded by Claude Code)
 .claude/skills/
+  setup/                   ← first-run: interview + fill context_map for your language
   song-lesson/             ← long-form lesson driven by a song
   grammar-lesson/          ← 60-minute focused drill on one grammar concept
+  vocab-lesson/            ← systematic high-frequency vocab → spaced review
   placement/               ← initial level test (CEFR / JLPT / HSK / TOPIK / ACTFL)
   review/                  ← 15-minute spaced-repetition session
 vault/
   _meta/                   ← canonical truth: context, principles, struggle log, register, playlist
   sessions/                ← one dated file per study session
   vocab/songs/             ← vocab cards keyed by song slug
+  vocab/sessions/          ← vocab-lesson logs + cards
+  vocab/frequency/         ← high-frequency word lists (vocab-lesson source)
   grammar/                 ← one file per grammar concept
   culture/                 ← cultural footnotes
   practice/                ← auto-written by the player (shadow scores, dialogue transcripts)
@@ -45,7 +49,7 @@ tools/
 
 1. **Clone** this repo and open the folder in [Obsidian](https://obsidian.md) as a vault.
 2. **Install** [Claude Code](https://docs.anthropic.com/claude-code) and open the same folder.
-3. **Edit `vault/_meta/context_map.md`** — replace Maya's profile with yours. This file is the source of truth for everything else.
+3. **Make it yours** — ask Claude to run the `setup` skill (it interviews you and fills `vault/_meta/context_map.md` + your variant register file), or edit `context_map.md` by hand. This file is the source of truth for everything else.
 4. **(Optional) replace `vault/_meta/{target}_register.md`** with one for the variant of the language you're learning. The default is `mexican_register.md`.
 5. **Start a session** in Claude Code:
    - First time: ask Claude to run the `placement` skill — produces a baseline level.

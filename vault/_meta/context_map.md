@@ -78,8 +78,9 @@ Variable. Long days: ramp toward C-level (Spanish-only, brutal) as level grows. 
 
 ## Tooling stack
 
-- **Obsidian vault** at this folder. Plugins: Spaced Repetition, Templater, Dataview.
-- **Claude Code skills** at `.claude/skills/`: `song-lesson`, `grammar-lesson`, `placement`, `review`.
+- **Obsidian vault** at this folder. Plugins: Spaced Repetition, Templater, Dataview (+ optional Tag Wrangler, Commander, Advanced Tables, LanguageTool, Homepage — see SETUP.md).
+  - **SRS deck convention:** flashcard files carry an inline `#flashcards/<lang>/<type>` tag (the plugin scans for `#flashcards`). Decks: `#flashcards/<lang>/vocab` (vocab-lesson) and `#flashcards/<lang>/songs/<slug>` (song harvests). The plugin owns the `<!--SR:-->` markers — skills never write them.
+- **Claude Code skills** at `.claude/skills/`: `setup`, `song-lesson`, `grammar-lesson`, `vocab-lesson`, `placement`, `review`.
 - **Lyrics fetch:** `tools/get_lyrics.mjs` (Node) — `song-lesson` uses it instead of WebFetching Genius/Letras. See `tools/README.md`.
 - **Playlist tracklist** at [[playlist]]. Exported from Spotify via [Exportify](https://exportify.net). Re-export and overwrite that file when the playlist changes.
 - **No Anki**, no external SRS, no Python helpers. Everything in the vault.

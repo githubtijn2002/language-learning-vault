@@ -6,7 +6,7 @@ This vault is designed and tuned for **Claude Opus**. Run it in Opus for the int
 
 Maya is learning **Mexican Spanish** for a job relocation to Mexico City in September 2027, targeting CEFR **A2 → B1**. Native English. See `vault/_meta/context_map.md` for the full profile — that file is the source of truth.
 
-> **Replacing Maya?** Edit `vault/_meta/context_map.md` first, then update the opening sentence above with your own language / motivation / target. Everything below this point should generalize unchanged.
+> **First run / replacing Maya?** Run the `setup` skill — it interviews you about your goals and fills `vault/_meta/context_map.md` + the variant register file for you (or edit `context_map.md` by hand). Then update the opening sentence above with your own language / motivation / target. Everything below this point should generalize unchanged.
 
 ## Context Map
 
@@ -23,7 +23,7 @@ On-demand (not auto-loaded — read when relevant):
 ## Project conventions
 
 - **Source of truth files:** `vault/_meta/context_map.md`, `vault/_meta/learning_principles.md`, `vault/_meta/struggle_log.md`. Variant register file is loaded on demand by the `song-lesson` skill.
-- **Skills:** `.claude/skills/song-lesson`, `.claude/skills/grammar-lesson`, `.claude/skills/placement`, `.claude/skills/review`.
+- **Skills:** `.claude/skills/setup` (first-run config), `.claude/skills/song-lesson`, `.claude/skills/grammar-lesson`, `.claude/skills/vocab-lesson`, `.claude/skills/placement`, `.claude/skills/review`.
 - **Date format:** `YYYY-MM-DD` everywhere.
 - **No emojis** unless the learner asks.
 
