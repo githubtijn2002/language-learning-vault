@@ -299,8 +299,8 @@ The skill runs phases (a)–(i): cold listen → walkthrough → deep dive → g
 
 ## 9. Day-to-day
 
-- **Long days (60+ min)**: song-lesson.
-- **Mid days (30 min)**: ask Claude to run phases c/d/f/h1 only (deep dive + grammar + production + shadow). Drop everything else.
+- **Long days (60+ min)**: song-lesson, or grammar-lesson when a concept needs sustained isolated focus.
+- **Mid days (30 min)**: ask Claude to run phases c/d/f/h1 only of song-lesson (deep dive + grammar + production + shadow), or run grammar-lesson trimmed to phases b/d/e. Drop everything else.
 - **Short days (15 min)**: review skill. No new material — just spaced reactivation of items in your struggle log.
 
 After every session, edit `vault/_meta/context_map.md` if anything *durable* changed (your level moved up a band, your target date shifted, you swapped a target song). Don't put session-specific state here.

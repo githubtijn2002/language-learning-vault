@@ -22,6 +22,7 @@ LICENSE                    ← MIT
 CLAUDE.md                  ← agent instructions (auto-loaded by Claude Code)
 .claude/skills/
   song-lesson/             ← long-form lesson driven by a song
+  grammar-lesson/          ← 60-minute focused drill on one grammar concept
   placement/               ← initial level test (CEFR / JLPT / HSK / TOPIK / ACTFL)
   review/                  ← 15-minute spaced-repetition session
 vault/

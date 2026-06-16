@@ -23,7 +23,7 @@ On-demand (not auto-loaded — read when relevant):
 ## Project conventions
 
 - **Source of truth files:** `vault/_meta/context_map.md`, `vault/_meta/learning_principles.md`, `vault/_meta/struggle_log.md`. Variant register file is loaded on demand by the `song-lesson` skill.
-- **Skills:** `.claude/skills/song-lesson`, `.claude/skills/placement`, `.claude/skills/review`.
+- **Skills:** `.claude/skills/song-lesson`, `.claude/skills/grammar-lesson`, `.claude/skills/placement`, `.claude/skills/review`.
 - **Date format:** `YYYY-MM-DD` everywhere.
 - **No emojis** unless the learner asks.
 
