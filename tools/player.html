@@ -86,6 +86,23 @@
     transition: opacity 150ms;
   }
   #status-overlay.show { opacity: 1; }
+  /* One-time audio gate: browsers block sound until a user gesture. The agent
+     can't synthesize that gesture, so we capture one click up front and prime
+     the active backend; after that, script-driven play() is allowed all session. */
+  #gate-overlay {
+    position: absolute; inset: 0; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; padding: 24px; text-align: center;
+    background: #000c; color: var(--text); cursor: pointer;
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  }
+  #gate-overlay.hide { display: none; }
+  #gate-overlay .gate-btn {
+    font-size: 26px; line-height: 1; font-weight: 600;
+    border: 1px solid var(--accent); color: var(--accent);
+    background: var(--accent-soft); border-radius: 999px; padding: 18px 28px;
+  }
+  #gate-overlay .gate-sub { font-size: 13px; color: var(--muted); max-width: 300px; line-height: 1.5; }
   .right-pane {
     overflow-y: auto;
     padding: 24px 28px 60vh 28px;
@@ -237,6 +254,10 @@
     <div id="yt-player"></div>
     <audio id="audio-player" controls></audio>
     <div id="status-overlay"></div>
+    <div id="gate-overlay">
+      <div class="gate-btn">▶ Click to enable audio</div>
+      <div class="gate-sub">Your browser blocks sound until you click once. After this, the lesson controls playback automatically — no more clicking needed.</div>
+    </div>
   </div>
   <div id="right" class="right-pane"></div>
 </main>
@@ -252,6 +273,7 @@
   let audioEl = document.getElementById("audio-player");
   let ytEl = document.getElementById("yt-player");
   let promoted = false;
+  let userActivated = false;  // set once the user has clicked (autoplay unlock)
   let aTime = null, bTime = null, aIdx = -1, bIdx = -1;
   let looping = false, armed = null, loopTimes = null, loopCount = 0;
   let activeIdx = -1;
@@ -265,6 +287,39 @@
     clearTimeout(statusOverlay._t);
     if (ms > 0) statusOverlay._t = setTimeout(() => el.classList.remove("show"), ms);
   }
+
+  // ----- Audio unlock (autoplay policy) -----------------------------------
+  // Browsers reject script-driven play() until the user interacts with the
+  // page once. The agent drives playback over SSE and can't produce a gesture,
+  // so we capture the first click, prime the active backend, and from then on
+  // every ctl play/loop works without further clicks.
+  function showGate() {
+    const ov = document.getElementById("gate-overlay");
+    if (ov) ov.classList.remove("hide");
+  }
+  function unlockAudio() {
+    if (userActivated) return;
+    userActivated = true;
+    try {
+      if (backend && backend.kind === "audio") {
+        const wasMuted = audioEl.muted;
+        audioEl.muted = true;
+        const p = audioEl.play();
+        if (p && p.then) {
+          p.then(() => { audioEl.pause(); audioEl.currentTime = 0; audioEl.muted = wasMuted; })
+           .catch(() => { audioEl.muted = wasMuted; });
+        }
+      } else if (backend && backend.kind === "yt" && ytPlayer && ytPlayer.playVideo) {
+        try { ytPlayer.mute(); ytPlayer.playVideo(); } catch {}
+        setTimeout(() => { try { ytPlayer.pauseVideo(); ytPlayer.seekTo(0, true); ytPlayer.unMute(); } catch {} }, 300);
+      }
+    } catch {}
+    const ov = document.getElementById("gate-overlay");
+    if (ov) ov.classList.add("hide");
+  }
+  // The overlay makes the gesture obvious, but a click anywhere also unlocks.
+  document.getElementById("gate-overlay").addEventListener("click", unlockAudio);
+  document.addEventListener("pointerdown", unlockAudio, { once: true, capture: true });
 
   function normalize(s) {
     return (s || "")
@@ -508,14 +563,14 @@
   let shadowAttempts = []; // attempts for the CURRENT line, in order
   let recognizer = null;
 
-  function buildRecognizer() {
+  function buildRecognizer(continuous = false) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return null;
     const r = new SR();
     // Locale for speech recognition. Change to match your target variant
     // (e.g. "es-MX", "ja-JP", "fr-FR", "zh-CN"). See SETUP.md §6.4.
     r.lang = "es-MX";
-    r.continuous = false;
+    r.continuous = continuous;
     r.interimResults = true;
     return r;
   }
@@ -774,6 +829,7 @@
         <div class="practice-transcript empty" id="dlg-interim">Waiting for next line...</div>
         <div class="practice-actions">
           <button id="dlg-listen">🎙 Speak now</button>
+          <button id="dlg-done" disabled>✓ Done speaking</button>
           <button id="dlg-cancel" disabled>Cancel recording</button>
           <button id="dlg-end">End dialogue</button>
         </div>
@@ -785,6 +841,7 @@
       localStorage.setItem("ttsVoiceURI", selectedVoiceURI);
     });
     document.getElementById("dlg-listen").addEventListener("click", () => armDialogueMic());
+    document.getElementById("dlg-done").addEventListener("click", () => finishDialogueMic());
     document.getElementById("dlg-cancel").addEventListener("click", () => cancelDialogueMic());
     document.getElementById("dlg-end").addEventListener("click", () => switchMode("listen"));
     if (opener) dialogueSay(opener);
@@ -844,9 +901,18 @@
   function setDialogueButtons(listening) {
     dialogueListening = listening;
     const speakBtn = document.getElementById("dlg-listen");
+    const doneBtn = document.getElementById("dlg-done");
     const cancelBtn = document.getElementById("dlg-cancel");
     if (speakBtn) speakBtn.disabled = listening;
+    if (doneBtn) doneBtn.disabled = !listening;
     if (cancelBtn) cancelBtn.disabled = !listening;
+  }
+
+  // Finalize the turn: stop() lets pending results flush, then onend submits.
+  function finishDialogueMic() {
+    if (!dialogueListening || !dialogueRecognizer) return;
+    dialogueCancelled = false;
+    try { dialogueRecognizer.stop(); } catch {}
   }
 
   function cancelDialogueMic() {
@@ -858,13 +924,13 @@
   function armDialogueMic() {
     const interim = document.getElementById("dlg-interim");
     if (!interim) return;
-    if (!dialogueRecognizer) dialogueRecognizer = buildRecognizer();
+    if (!dialogueRecognizer) dialogueRecognizer = buildRecognizer(true);
     if (!dialogueRecognizer) {
       interim.textContent = "Speech recognition not available.";
       interim.classList.remove("empty");
       return;
     }
-    interim.textContent = "Listening...";
+    interim.textContent = "Listening... (press ✓ Done speaking when you finish)";
     interim.classList.remove("empty");
     dialogueCancelled = false;
     let finalText = "";
@@ -914,6 +980,7 @@
   function handleCmd(action, args) {
     args = args || {};
     if (action === "play") {
+      if (!userActivated) { showGate(); statusOverlay("Click ▶ in the player to enable audio", 4000); }
       if (args.start != null) backend.seekTo(args.start);
       if (args.end != null) {
         aTime = args.start; bTime = args.end;
@@ -932,6 +999,7 @@
       return;
     }
     if (action === "loop") {
+      if (!userActivated) { showGate(); statusOverlay("Click ▶ in the player to enable audio", 4000); }
       aTime = args.a; bTime = args.b;
       // Try to find matching line indices so the markers paint; fall back to -1.
       aIdx = lines.findIndex((ln) => ln.time !== null && Math.abs(ln.time - aTime) < 0.01);
