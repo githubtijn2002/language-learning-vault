@@ -141,7 +141,7 @@ If Claude responds with something specific (e.g. "Maya is targeting CEFR B1 by S
 
 The template ships with Maya's content (English speaker → Mexican Spanish, CEFR A2→B1, Mexico City relocation 2027). Replace it.
 
-**Easiest path:** open Claude Code and ask it to run the `setup` skill — it interviews you about your goals and fills `context_map.md` + your variant register file automatically. The manual steps below are the alternative (and a good way to review what `setup` wrote).
+**Easiest path:** open Claude Code and ask it to run the `setup` skill — it interviews you about your goals and fills `context_map.md`, your variant register file, and your `grammar_arc.md` automatically. The manual steps below are the alternative (and a good way to review what `setup` wrote).
 
 ### 5.1 Edit `vault/_meta/context_map.md`
 
@@ -190,6 +190,10 @@ If you don't use Spotify, you can paste an "artist — title" list into a Claude
 # Open vault/_meta/struggle_log.md and delete the example rows (everything below the "Vocab gaps" header).
 # Open vault/_meta/playlist.md and clear the placeholder rows.
 ```
+
+### 5.5 Populate the grammar arc
+
+`vault/_meta/grammar_arc.md` ships as a bare framework. It's the ordered map of grammar concepts from your current band to your target — the `grammar-lesson` skill reads it to pick the next concept, and `placement` reads its stage gates to decide when a re-test is due. The `setup` skill fills it for you; to do it by hand, create one stage section per band (current → one beyond target) using the standard grammar progression for your language and level system, set every concept `not-started`, and leave the universal framework parts (status vocabulary, single-writer rule, retest trigger) untouched.
 
 ---
 

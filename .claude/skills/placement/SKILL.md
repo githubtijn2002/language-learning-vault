@@ -11,6 +11,7 @@ You are running a **60-minute baseline placement test**. Read `vault/_meta/conte
 
 1. Read `vault/_meta/context_map.md` to know the learner's current self-assessed level, target language, target variant, and which level system to use.
 2. Read `vault/_meta/struggle_log.md` if it exists — gives a head start on what to probe.
+   Also read `vault/_meta/grammar_arc.md` if populated — its stage **gates** feed the re-test trigger below, and concepts marked `landed` since the last placement are the ones to verify hardest.
 3. Create today's session file if missing: `vault/sessions/<YYYY-MM-DD>_placement.md` with frontmatter (date, type, duration).
 4. Tell the learner the test will take ~60 minutes, comes in 5 sections, and produces an honest band assessment + 3 prioritised weaknesses.
 
@@ -86,5 +87,5 @@ End with:
 
 - **Overall band** (e.g. "A2−" / "N4" / "HSK 2 stretch") and a one-paragraph honest read.
 - **Top 3 specific weaknesses** to prioritise in the next 4 weeks. Be concrete (e.g. "preterite/imperfect contrast in Spanish", "particle drop in Japanese embedded clauses", "tone sandhi on 一 / 不 in Mandarin").
-- **Next placement re-test date** — 8 weeks from today.
+- **Next placement re-test trigger** — whichever comes first: **8 weeks from today**, OR the current stage's **Gate** in `vault/_meta/grammar_arc.md` being met (if the arc is populated). Record both the date and the active stage gate, so a future session knows which is closer. This catches fast progress early and slow progress on schedule.
 - Append the top 3 weaknesses to `vault/_meta/struggle_log.md` (under the relevant section) so the `song-lesson` and `review` skills start biasing toward them immediately.

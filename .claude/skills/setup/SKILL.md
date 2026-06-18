@@ -21,6 +21,7 @@ If `context_map.md` is already personalised and the learner didn't ask to redo i
 - Install plugins or run shell tools yourself — those are manual; point the learner to `SETUP.md`.
 - Invent the learner's level — gather a self-assessment here; the `placement` skill calibrates it properly afterwards.
 - Fabricate language facts. If unsure about a variant's register/lexicon, say so and ask, or leave a clearly-marked TODO in the register file for a later pass.
+- Fabricate a grammar progression. When populating the arc (below), only commit to the standard sequence you're confident of for the target language at its level system; leave a clearly-marked TODO for bands you're unsure of rather than inventing concepts or ordering.
 
 ## Interview (ask in small batches — multiple-choice where the option set is clear, free text otherwise)
 Gather, then confirm back before writing anything:
@@ -37,13 +38,14 @@ Gather, then confirm back before writing anything:
 ## Write (only after the learner confirms the summary)
 1. **`vault/_meta/context_map.md`** — fill the frontmatter (`level_system`, `target_language`, `target_variant`, `source_language`, `working_language`) and every section (Learner / Target / Motivation / Cultural focus / Time budget / Personal interests / Tooling) from the answers. Convert relative dates to absolute `YYYY-MM-DD`.
 2. **Variant register file** — create `vault/_meta/<variant>_register.md` (rename the shipped example if present). Scaffold: lexicon to prefer/avoid, register markers (formality / honorifics / diminutives), common sentence patterns, pronunciation notes, and topic banks anchored to the learner's interests. Fill what you can confidently; leave clearly-marked TODOs for variant details you're unsure of. If you renamed the file, update the one `register.md` reference in `song-lesson/SKILL.md`.
-3. **SRS deck language** — record in `context_map.md` Tooling that flashcard files use `#flashcards/<lang>/<type>` (replace `<lang>` with the target-language slug). The `vocab-lesson` and `song-lesson` skills read this convention.
-4. **Reset example data** — clear the template's example `struggle_log.md` rows and `playlist.md` placeholders. **Confirm before deleting.**
+3. **Grammar arc** — populate `vault/_meta/grammar_arc.md` (it ships as a bare framework). From the declared `level_system`, create one stage section per band from the learner's current band up to (and one beyond) their target, ordered with the standard grammar progression for the target language. Set every concept `not-started`, give each a prerequisite and a stage **Gate**, and fill the expander/refresher chains for that language. Leave clearly-marked TODOs for any band/progression you're unsure of (see *Do NOT*). The framework parts (status vocabulary, single-writer rule, retest trigger) are universal — leave them as-is.
+4. **SRS deck language** — record in `context_map.md` Tooling that flashcard files use `#flashcards/<lang>/<type>` (replace `<lang>` with the target-language slug). The `vocab-lesson` and `song-lesson` skills read this convention.
+5. **Reset example data** — clear the template's example `struggle_log.md` rows and `playlist.md` placeholders. **Confirm before deleting.**
 
 ## Hand-off (end-of-session message, exact shape)
 ```
 Vault configured: <target language> (<variant>), <L1> speaker, <level_system> <current>→<target> by <date>.
-Wrote: context_map.md, <variant>_register.md
+Wrote: context_map.md, <variant>_register.md, grammar_arc.md
 Manual steps left (see SETUP.md): install plugins; (optional) Docker + LanguageTool; (optional) Azure TTS.
 Next move: run the `placement` skill to calibrate your real level.
 ```

@@ -21,6 +21,7 @@ A 60-minute text-only drill for **introducing or consolidating a grammar concept
 2. `vault/_meta/learning_principles.md` — binding tone, correction format, struggle_log discipline.
 3. `vault/_meta/struggle_log.md` — used as a **filter** (don't re-teach things the learner has already landed) and as a **gap signal** (a concept that surfaced but never had a full lesson is a strong candidate).
 4. `ls vault/grammar/` — list of concepts already with a written file. Existing-file + low streak = continuation candidate; existing-file + streak ≥ 2 + recent contact = leave alone.
+5. `vault/_meta/grammar_arc.md` — the **sequence map**. Drives Lane 1 below, and you write its Status column back at session end (single-writer rule — see *Always write*). If it's still a bare template (never populated), fall back to your knowledge of the language's standard progression and flag that the arc should be set up.
 
 ## Inputs (ask only what's missing)
 
@@ -33,13 +34,9 @@ A 60-minute text-only drill for **introducing or consolidating a grammar concept
 Bias toward **new material**. Pull one candidate from each lane, in this priority order:
 
 **Lane 1 — Level-appropriate next concept (the default driver).**
-Look at the current and target level in `context_map.md` (any system: CEFR / JLPT / HSK / TOPIK / ACTFL), and at `ls vault/grammar/` (what's already been written). Pick a concept that is:
+**Read `vault/_meta/grammar_arc.md`.** The next concept is the **earliest `not-started` / `introduced` item in the current stage** whose prerequisites are `landed` or better. Items unlocked by an expander/refresher chain (arc § *Expander / refresher chains*) are equally valid Lane-1 candidates. Honor the prerequisite-clean rule (don't propose advanced subjunctive forms if present subjunctive triggers are still wobbly; don't propose keigo if te-form isn't solid; don't propose Genitiv if Akkusativ / Dativ are still hit-and-miss).
 
-- on the standard progression for the target language between the current and target level,
-- **not yet** in `vault/grammar/` with a streak ≥ 2,
-- prerequisite-clean (don't propose advanced subjunctive forms if present subjunctive triggers are still wobbly; don't propose keigo if te-form isn't solid; don't propose Genitiv if Akkusativ / Dativ are still hit-and-miss).
-
-You are expected to know the standard grammar progression for major learner languages at the level-system's bands. If you're uncertain, name your uncertainty, propose the nearest concept you *are* sure about, and let the learner correct course.
+If the arc is missing or still a bare template, fall back to your knowledge of the standard grammar progression for the target language at the level-system's bands (CEFR / JLPT / HSK / TOPIK / ACTFL), propose the earliest unmet concept, and flag that the arc should be populated (via `setup`). If you're uncertain of the progression, name the uncertainty, propose the nearest concept you *are* sure about, and let the learner correct course.
 
 **Lane 2 — Surfaced-but-untaught.**
 Scan `struggle_log` for grammar items that appear once or twice but **have no `vault/grammar/<slug>.md` file yet** — i.e. the learner has touched the concept in a song / production turn but never had it formally introduced. These are the highest-leverage gaps.
@@ -174,7 +171,9 @@ No fluff ("nice!", "great job"). Banner → content → next banner.
    - If a row's streak hits 3 across ≥2 sessions, move it to *Graduated*.
    - If a new pattern emerged ≥2 times this session, add to the recurring-patterns section.
 
-4. **No new culture/vocab files** unless the concept genuinely required a vocab anchor (e.g. teaching gustar-type requires the IO-pronoun mini-set — that's fine, append to `vault/vocab/grammar/<slug>.md`).
+4. **`vault/_meta/grammar_arc.md`** — mirror the (f) verdict into the target concept's **Status** column, in the *same* write as struggle_log. Use the arc's status vocabulary (`not-started` → `introduced` → `landing` → `landed` → `graduated`). **This skill is the only writer of arc status.** If the verdict graduates the concept and the next stage's *Gate* is now met, note it in the verdict line so `placement` picks it up. Don't narrate this write (same silent-update discipline as struggle_log). Skip if the arc is still a bare unpopulated template.
+
+5. **No new culture/vocab files** unless the concept genuinely required a vocab anchor (e.g. teaching gustar-type requires the IO-pronoun mini-set — that's fine, append to `vault/vocab/grammar/<slug>.md`).
 
 ## End-of-session message (exact shape)
 
